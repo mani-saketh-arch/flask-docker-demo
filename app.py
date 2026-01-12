@@ -227,6 +227,9 @@ def task_status(task_id):
     return jsonify(response)
 
 
+@app.route('/about')
+def about():
+    return render_template('about.html')
     
 # Only run init_db in development or when explicitly needed
 if __name__ == '__main__':
