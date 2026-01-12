@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Background Tasks Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .back-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .task-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .task-btn {
+            background-color: #2196F3;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .task-btn:hover {
+            background-color: #0b7dda;
+        }
+        .status-box {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            min-height: 100px;
+        }
+        .task-item {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #2196F3;
+        }
+        .task-pending { border-left-color: #FFC107; }
+        .task-started { border-left-color: #2196F3; }
+        .task-success { border-left-color: #4CAF50; }
+        .task-failure { border-left-color: #f44336; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Background Tasks Demo</h2>
+        <a href="{{ url_for('home') }}" class="back-btn">← Back to Dashboard</a>
+    </div>
+
+    <p>Click a button to start a background task. The task runs asynchronously without blocking the UI!</p>
+
+    <div class="task-buttons">
+        <button class="task-btn" onclick="startTask('process_data')">
+            Process Data (3-10s)
+        </button>
+        <button class="task-btn" onclick="startTask('send_email')">
+            Send Email (2s)
+        </button>
+        <button class="task-btn" onclick="startTask('generate_report')">
+            Generate Report (5s)
+        </button>
+    </div>
+
+    <div class="status-box" id="status-box">
+        <p>No tasks running. Click a button to start!</p>
+    </div>
+
+    <script>
+        const statusBox = document.getElementById('status-box');
+        const activeTasks = new Map();
+
+        async function startTask(taskType) {
+            try {
+                const response = await fetch('/start-task', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ task_type: taskType })
+                });
+                
+                const data = await response.json();
+                
+                if (data.task_id) {
+                    addTaskToUI(data.task_id, taskType);
+                    checkTaskStatus(data.task_id);
+                }
+            } catch (error) {
+                console.error('Error starting task:', error);
+            }
+        }
+
+        function addTaskToUI(taskId, taskType) {
+            const taskDiv = document.createElement('div');
+            taskDiv.id = `task-${taskId}`;
+            taskDiv.className = 'task-item task-pending';
+            taskDiv.innerHTML = `
+                <strong>${taskType}</strong><br>
+                Task ID: ${taskId}<br>
+                Status: <span id="status-${taskId}">Starting...</span>
+            `;
+            
+            if (statusBox.querySelector('p')) {
+                statusBox.innerHTML = '';
+            }
+            statusBox.insertBefore(taskDiv, statusBox.firstChild);
+            
+            activeTasks.set(taskId, taskType);
+        }
+
+        async function checkTaskStatus(taskId) {
+            try {
+                const response = await fetch(`/task-status/${taskId}`);
+                const data = await response.json();
+                
+                const statusSpan = document.getElementById(`status-${taskId}`);
+                const taskDiv = document.getElementById(`task-${taskId}`);
+                
+                if (statusSpan && taskDiv) {
+                    statusSpan.textContent = data.status;
+                    
+                    // Update styling based on state
+                    taskDiv.className = `task-item task-${data.state.toLowerCase()}`;
+                    
+                    // If task is still running, check again in 1 second
+                    if (data.state === 'PENDING' || data.state === 'STARTED') {
+                        setTimeout(() => checkTaskStatus(taskId), 1000);
+                    } else if (data.state === 'SUCCESS') {
+                        statusSpan.innerHTML = `${data.status}<br>Result: ${JSON.stringify(data.result)}`;
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking task status:', error);
+            }
+        }
+    </script>
+</body>
+</html>

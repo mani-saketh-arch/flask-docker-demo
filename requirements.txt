@@ -1,0 +1,8 @@
+Flask
+gunicorn
+Werkzeug
+psycopg2-binary
+python-dotenv
+celery
+redis
+flower
