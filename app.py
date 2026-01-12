@@ -230,7 +230,15 @@ def task_status(task_id):
 @app.route('/about')
 def about():
     return render_template('about.html')
-    
+
+
+@app.route('/contact')
+def contact():
+    return '''
+    <h1>Contact Us</h1>
+    <p>Email: contact@example.com</p>
+    <p><a href="/">Back to Home</a></p>
+    '''  
 # Only run init_db in development or when explicitly needed
 if __name__ == '__main__':
     init_db()
